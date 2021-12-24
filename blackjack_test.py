@@ -1,6 +1,6 @@
 import unittest
 
-from blackjack import Game
+from blackjack import Move, Game, Hand
 
 
 class GameTest(unittest.TestCase):
@@ -27,44 +27,78 @@ class GameTest(unittest.TestCase):
     self.assertEqual(len(game1.shoe), 0)
     self.assertEqual(len(game1.discard_pile), self.NUM_CARDS_IN_DECK)
 
-  def test_find_highest_val_before_bust(self):
+  def test_calculate_values_of_hand(self):
     game1 = Game()
 
-    game1.player.cards = ['2', 'J']  # 12
-    self.assertEqual(game1.player.find_highest_val_before_bust(), 12)
+    game1.player_hands = [Hand()]
 
-    game1.player.cards = []  # 0
-    self.assertEqual(game1.player.find_highest_val_before_bust(), 0)
+    game1.player_hands[0].cards = ['2', 'J']  # 12
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertEqual(game1.player_hands[0].current_highest_val, 12)
 
-    game1.player.cards = ['A', '2']  # 13
-    self.assertEqual(game1.player.find_highest_val_before_bust(), 13)
+    game1.player_hands[0].cards = []  # 0
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertEqual(game1.player_hands[0].current_highest_val, 0)
 
-    game1.player.cards = ['A', '2', 'A']  # 14
-    self.assertEqual(game1.player.find_highest_val_before_bust(), 14)
+    game1.player_hands[0].cards = ['A', '2']  # 13
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertEqual(game1.player_hands[0].current_highest_val, 13)
+
+    game1.player_hands[0].cards = ['A', '2', 'A']  # 14
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertEqual(game1.player_hands[0].current_highest_val, 14)
 
   def test_has_blackjack(self):
     game1 = Game()
 
-    game1.player.cards = ['A', 'J']  # 21
-    self.assertTrue(game1.player.has_blackjack())
+    game1.player_hands[0].cards = ['A', 'J']  # 21
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertTrue(game1.player_hands[0].has_blackjack())
 
-    game1.player.cards = ['A', 'T']  # 21
-    self.assertTrue(game1.player.has_blackjack())
+    game1.player_hands[0].cards = ['A', 'T']  # 21
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertTrue(game1.player_hands[0].has_blackjack())
 
-    game1.player.cards = ['2', 'J']  # 12
-    self.assertFalse(game1.player.has_blackjack())
+    game1.player_hands[0].cards = ['2', 'J']  # 12
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertFalse(game1.player_hands[0].has_blackjack())
 
-    game1.player.cards = ['2', 'J', '9']  # 21
-    self.assertTrue(game1.player.has_blackjack())
+    game1.player_hands[0].cards = ['2', 'J', '9']  # 21
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertTrue(game1.player_hands[0].has_blackjack())
 
-    game1.player.cards = ['2', 'J', '9']  # 21
-    self.assertTrue(game1.player.has_blackjack())
+    game1.player_hands[0].cards = ['2', 'J', '9']  # 21
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertTrue(game1.player_hands[0].has_blackjack())
 
-    game1.player.cards = []  # 0
-    self.assertFalse(game1.player.has_blackjack())
+    game1.player_hands[0].cards = []  # 0
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertFalse(game1.player_hands[0].has_blackjack())
 
-    game1.player.cards = ['A', '2']  # 13
-    self.assertFalse(game1.player.has_blackjack())
+    game1.player_hands[0].cards = ['A', '2']  # 13
+    game1.player_hands[0]._calculate_values_of_hand()
+    self.assertFalse(game1.player_hands[0].has_blackjack())
+
+  def test_get_allowed_moves_for_hand(self):
+    game1 = Game()
+    game1.player_hands[0].cards = ['A', 'J']  # 21
+    self.assertEqual(game1.get_allowed_moves_for_hand(), {Move.BLACKJACK})
+
+    game1 = Game()
+    game1.player_hands[0].cards = ['A', 'T']  # 21
+    self.assertEqual(game1.get_allowed_moves_for_hand(), {Move.BLACKJACK})
+
+    game1 = Game()
+    game1.player_hands[0].cards = ['2', 'J']  # 12
+    self.assertEqual(game1.get_allowed_moves_for_hand(), {Move.HIT, Move.STAND, Move.DOUBLE})
+
+    game1 = Game()
+    game1.player_hands[0].cards = ['6', '6']  # 12
+    self.assertEqual(game1.get_allowed_moves_for_hand(), {Move.HIT, Move.STAND, Move.SPLIT, Move.DOUBLE})
+
+    game1 = Game()
+    game1.player_hands[0].cards = ['T', '2', 'T']  # 13
+    self.assertEqual(game1.get_allowed_moves_for_hand(), {Move.BUST})
 
 
 if __name__ == '__main__':
