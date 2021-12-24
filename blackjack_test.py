@@ -4,12 +4,10 @@ from blackjack import Move, Game, Hand
 
 
 class GameTest(unittest.TestCase):
-  NUM_CARDS_IN_DECK = 13
-
   def test_cards_setup(self):
     game = Game()
     self.assertEqual(len(game.CARD_2_VAL.keys()), len(game.CARDS))
-    self.assertEqual(len(game.CARDS), self.NUM_CARDS_IN_DECK)
+    self.assertEqual(len(game.CARDS), game.NUM_CARDS_IN_DECK)
 
   def test_shoe_setup(self):
     game1 = Game(num_of_decks=1)
@@ -22,10 +20,10 @@ class GameTest(unittest.TestCase):
 
   def test_deal_card(self):
     game1 = Game(num_of_decks=1)
-    for _ in range(self.NUM_CARDS_IN_DECK):
+    for _ in range(Game.NUM_CARDS_IN_DECK):
       game1._deal_card()
     self.assertEqual(len(game1.shoe), 0)
-    self.assertEqual(len(game1.discard_pile), self.NUM_CARDS_IN_DECK)
+    self.assertEqual(len(game1.discard_pile), Game.NUM_CARDS_IN_DECK)
 
   def test_calculate_values_of_hand(self):
     game1 = Game()
