@@ -98,6 +98,29 @@ class GameTest(unittest.TestCase):
     game1.player_hands[0].cards = ['T', '2', 'T']  # 13
     self.assertEqual(game1.get_allowed_moves_for_hand(), {Move.BUST})
 
+    game1 = Game()
+    game1.player_hands[0].cards = ['6', 'J', '8']  # 24
+    self.assertEqual(game1.get_allowed_moves_for_hand(), {Move.BUST})
+
+  def test_play_hand_randomly(self):
+    game1 = Game(player_money=100)
+    game1.deal_hand(bet=50)
+
+    game1.player_hands[0].cards = ['A', 'J']
+    game1.dealer_hand.cards = ['4', '5']
+
+    game1._play_hand()
+    self.assertEqual(game1.player_money, 175)
+
+    game2 = Game(player_money=100)
+    game2.deal_hand(bet=50)
+
+    game2.player_hands[0].cards = ['T', 'J', 'T']
+    game2.dealer_hand.cards = ['4', '5']
+
+    game2._play_hand()
+    self.assertEqual(game2.player_money, 50)
+
 
 if __name__ == '__main__':
   unittest.main()
