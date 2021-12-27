@@ -39,19 +39,21 @@ class Game:
     self.discard_pile = []
 
     self.player_money = player_money
-
-    self.player_hands = [Hand()]
-    self.dealer_hand = Hand()
-    self.bet = 0
-    # You can only receive one more card after doubling down
-    self.is_doubled_down = False
-    self.is_split = False
+    self._reset_hands()
 
     self.running_count = 0
     self.true_count = 0
 
     # Blackjack variations properties
     self.blackjack_pays = blackjack_pays  # Multiplier, e.g. 3:2
+
+  def _reset_hands(self, bet=0):
+    self.player_hands = [Hand(bet)]
+    self.dealer_hand = Hand()
+
+    self.is_split = False  # Every hand is allowed to be split once.
+    # A hand is allowed to be split once more if it did not come from a pair of aces.
+    self.is_split_twice = False
 
   def _deal_card(self) -> str:
     """Function uses the current shoe to get the next card.
@@ -60,20 +62,14 @@ class Game:
     card = self.shoe.pop()
     self.discard_pile.append(card)
     self.running_count += Game.CARD_2_COUNT_SIMPLE[card]
-    # True count is the running count divided by the number of decks remaining
-    # TODO: Maybe round the number of decks remaining
-    self.true_count = self.running_count / (len(self.shoe) / Game.NUM_CARDS_IN_DECK)
+    # True count is the running count divided by the number of decks remaining.
+    # We round the number of decks remaining to the nearest quarter deck.
+    self.true_count = self.running_count / round((len(self.shoe) + 1) * 4) / 4 / Game.NUM_CARDS_IN_DECK
 
     return card
 
   def deal_hand(self, bet=50):
-    # Clear previous hands.
-    self.player_hands = [Hand()]
-    self.dealer_hand = Hand()
-    self.bet = bet
-
-    self.is_doubled_down = False
-    self.is_split = False
+    self._reset_hands(bet=bet)
 
     self.player_hands[0].cards.append(self._deal_card())  # Up
     self.dealer_hand.cards.append(self._deal_card())  # Down
@@ -90,6 +86,7 @@ class Game:
     if self.player_hands[0].cards[0] == self.player_hands[0].cards[1]:
       moves.add(Move.SPLIT)
     if len(self.player_hands[0].cards) == 2:
+      # Only allowed to double down in the beginning.
       moves.add(Move.DOUBLE)
 
     return moves
@@ -102,24 +99,52 @@ class Game:
     moves = self.get_allowed_moves_for_hand()
     if moves == {Move.BLACKJACK}:
       self.player_money += self.bet * self.blackjack_pays
+      self.player_hands.pop(0)
+      return
     elif moves == {Move.BUST}:
       self.player_money -= self.bet
+      self.player_hands.pop(0)
+      return
 
     # Select move randomly
     move = random.sample(moves, 1)
     if move == Move.STAND:
       self.dealer_hand.finish_as_dealer()
+      self.print_hands()
       if self.player_hands[0].current_highest_val == self.dealer_hand.current_highest_val:
-        self.print_hands()
         print('Push!\n')
-      
+      elif self.player_hands[0].current_highest_val > self.dealer_hand.current_highest_val:
+        print('Win!\n')
+        self.player_money += self.bet
+      else:
+        print('Lose!\n')
+        self.player_money -= self.bet
+      self.player_hands.pop(0)
+      return
+    elif move == Move.HIT or move == Move.DOUBLE:
+      if move == Move.DOUBLE:
+        self.bet *= 2
+      self.player_hands[0].cards.append(self._deal_card())
+      return self.play_hand_randomly()
+    elif move == Move.SPLIT:
+      self.player_hands.append(Hand())
+      # Move second card in the first hand to the first card in the last hand.
+      self.player_hands[-1].cards.append(self.player_hands[0].cards.pop())
+
+      # Deal two new cards.
+      self.player_hands[0].cards.append(self._deal_card())
+      self.player_hands[-1].cards.append(self._deal_card())
+      self.play_hand_randomly()  # Play first hand
+      self.play_hand_randomly()  # Play second hand
+      return
 
 
 class Hand:
   """Gives information about someone's hand."""
 
-  def __init__(self, cards=[]):
+  def __init__(self, cards=[], bet=50):
     self.cards = cards
+    self.bet = bet
     self.current_highest_val = None
     self.current_lowest_val = None
 
