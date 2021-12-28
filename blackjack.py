@@ -52,6 +52,13 @@ class Game:
   def _reset_hands(self, bet=0):
     self.bet = bet
 
+    self.move = None
+    self.player_one = None
+    self.dealer_down = None
+    self.player_two = None
+    self.dealer_up = None
+    self.outcome = 0
+
     self.player_hands = [Hand(bet=self.bet)]
     self.dealer_hand = Hand()
 
@@ -79,10 +86,15 @@ class Game:
 
     self._reset_hands(bet=bet)
 
-    self.player_hands[0].cards.append(self._deal_card())  # Up
-    self.dealer_hand.cards.append(self._deal_card())  # Down
-    self.player_hands[0].cards.append(self._deal_card())  # Up
-    self.dealer_hand.cards.append(self._deal_card())  # Up
+    self.player_one = self._deal_card()
+    self.dealer_down = self._deal_card()
+    self.player_two = self._deal_card()
+    self.dealer_up = self._deal_card()
+
+    self.player_hands[0].cards.append(self.player_one)  # Up
+    self.dealer_hand.cards.append(self.dealer_down)  # Down
+    self.player_hands[0].cards.append(self.player_two)  # Up
+    self.dealer_hand.cards.append(self.dealer_up)  # Up
 
   def get_allowed_moves_for_hand(self) -> Set[Move]:
     if self.player_hands[0].has_blackjack():
@@ -104,58 +116,87 @@ class Game:
     return moves
 
   def print_hands(self):
-    print('Player hand(s): %s' % list(hand.cards for hand in self.player_hands))
-    print('Dealer hand: %s' % ', '.join(self.dealer_hand.cards))
+    toprint = 'Player hand(s): %s' % list(hand.cards for hand in self.player_hands)
+    toprint += '\n'
+    toprint += 'Dealer hand: %s' % ', '.join(self.dealer_hand.cards)
 
-  def play_hand(self, move=None) -> None:
-    return _play_hand(self, move)
+    return toprint
 
-  def _play_hand(self, move=None) -> None:
+  def play_hand(self, move=None, print_log=True) -> None:
+    toprint = self._play_hand(move)
+    if print_log:
+      print(toprint)
+    return
+
+  def _play_hand(self, move=None) -> str:
     moves = self.get_allowed_moves_for_hand()
-    print(moves)
+
+    toprint = '%s\n' % moves
+
     if moves == {Move.BLACKJACK}:
       self.player_money += self.bet * self.blackjack_pays
-      self.print_hands()
-      print('Blackjack!\n')
+
+      toprint += self.print_hands()
+      toprint += '\n'
+      toprint += 'Blackjack!\n'
+
       self.player_hands.pop(0)
-      return
+      self.outcome += 1 * self.blackjack_pays
+      return toprint
     elif moves == {Move.BUST}:
       self.player_money -= self.bet
-      self.print_hands()
-      print('Bust!\n')
+
+      toprint += self.print_hands()
+      toprint += '\n'
+      toprint += 'Bust!\n'
+
       self.player_hands.pop(0)
-      return
+      self.outcome += -1
+      return toprint
 
     # Select move randomly if not provided
     if not move:
       move = random.sample(moves, 1)[0]
-    print(move)
+    if not self.move:
+      self.move = move
+
+    toprint = '%s\n' % move
+
     if move == Move.STAND:
       # Dealer is revealed to the split hands
       # but this does not matter since the dealer's cards are not used in the strategy.
       self.dealer_hand.finish_as_dealer(self)
-      self.print_hands()
+
+      toprint += self.print_hands()
+      toprint += '\n'
+
       if self.player_hands[0].current_highest_val == self.dealer_hand.current_highest_val:
-        print('Push!\n')
+        toprint += 'Push!\n'
       elif self.player_hands[0].current_highest_val > self.dealer_hand.current_highest_val or \
           self.dealer_hand.current_lowest_val > Game.BLACKJACK_VAL:
-        print('Win!\n')
+        toprint += 'Win!\n'
         self.player_money += self.bet
+        self.outcome += 1
       else:
-        print('Lose!\n')
+        toprint += 'Lose\n'
         self.player_money -= self.bet
+        self.outcome += -1
       self.player_hands.pop(0)
-      return
+      return toprint
     elif move == Move.HIT or move == Move.DOUBLE:
-      self.print_hands()
+      toprint += self.print_hands()
+      toprint += '\n'
+
       if move == Move.DOUBLE:
         self.bet *= 2
-        print('Double!\n')
-      print('Hit!\n')
+        toprint += 'Double!\n'
+      toprint += 'Hit!\n'
+
       self.player_hands[0].cards.append(self._deal_card())
-      return self._play_hand()
+      return toprint + self._play_hand()
     elif move == Move.SPLIT:
-      self.print_hands()
+      toprint += self.print_hands()
+      toprint += '\n'
 
       if not self.is_split:
         self.is_split = True
@@ -170,11 +211,11 @@ class Game:
       self.player_hands[0].cards.append(self._deal_card())
       self.player_hands[-1].cards.append(self._deal_card())
 
-      print('Split!\n')
+      toprint += 'Split!\n'
+      toprint += self._play_hand()  # Play first hand
+      toprint += self._play_hand()  # Play second hand
 
-      self._play_hand()  # Play first hand
-      self._play_hand()  # Play second hand
-      return
+      return toprint
 
 
 class Hand:

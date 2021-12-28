@@ -109,7 +109,7 @@ class GameTest(unittest.TestCase):
     game1.player_hands[0].cards = ['A', 'J']
     game1.dealer_hand.cards = ['4', '5']
 
-    game1._play_hand()
+    game1.play_hand()
     self.assertEqual(game1.player_money, 175)
 
     game2 = Game(player_money=100)
@@ -118,8 +118,16 @@ class GameTest(unittest.TestCase):
     game2.player_hands[0].cards = ['T', 'J', 'T']
     game2.dealer_hand.cards = ['4', '5']
 
-    game2._play_hand()
+    game2.play_hand()
     self.assertEqual(game2.player_money, 50)
+
+    # game3 = Game(player_money=100)
+    # game3.deal_hand(bet=50)
+    #
+    # game3.player_hands[0].cards = ['6', '6']
+    # game3.dealer_hand.cards = ['4', '5']
+    #
+    # game3.play_hand()
 
 
 if __name__ == '__main__':
