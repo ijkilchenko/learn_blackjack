@@ -1,4 +1,5 @@
 import random
+from collections import defaultdict
 from enum import Enum
 from typing import Set
 
@@ -15,15 +16,31 @@ class Move(Enum):
 
 class Runner:
   def __init__(self):
-    self.games = []
+    # self.games = []
+    self.total_num_of_hands = 0
 
-  def play_a_game(self):
-    game = Game()
-    self.games.append(game)
+    self.cards_move_2_outcome = defaultdict(lambda: 0)
+
+  def play_a_game(self, num_games=100):
+    i = 0
+    while i < num_games:
+      game = Game(player_money=100)
+      # self.games.append(game)
+      while not game.shoe_is_done:
+        game.deal_hand()
+        game.play_hand(print_log=False)
+
+        self.total_num_of_hands += game.num_of_hands
+        self.cards_move_2_outcome[
+          (game.player_first_card, game.player_second_card, game.dealer_hand.cards[1], game.move)] = game.outcome
+
+      i += 1
+    for key in self.cards_move_2_outcome.keys():
+      print('%s,%s,%s,%s,%s' % (key[0], key[1], key[2], key[3], self.cards_move_2_outcome[key]))
 
 
 class Game:
-  CARDS = '23456789TJQKA'
+  CARDS = '23456789TJQKA'  # TODO
   NUM_CARDS_IN_DECK = 13
   CARD_2_VAL = {'2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
                 'T': 10, 'J': 10, 'Q': 10, 'K': 10, 'A': 1}
@@ -45,6 +62,8 @@ class Game:
     self.true_count = 0
 
     self.num_of_hands = 0
+    self.shoe_is_done = False
+    # TODO: Maybe add num_split_hands in order to average the outcome of split hands?
 
     # Blackjack variations properties
     self.blackjack_pays = blackjack_pays  # Multiplier, e.g. 3:2
@@ -53,15 +72,16 @@ class Game:
     self.bet = bet
 
     self.move = None
-    self.player_one = None
+    self.player_first_card = None
     self.dealer_down = None
-    self.player_two = None
+    self.player_second_card = None
     self.dealer_up = None
     self.outcome = 0
 
     self.player_hands = [Hand(bet=self.bet)]
     self.dealer_hand = Hand()
 
+    self.is_doubled_down = False  # Can't have blackjack when doubled down.
     self.is_split = False  # Every hand is allowed to be split once.
     # A hand is allowed to be split once more if it did not come from a pair of aces.
     self.is_split_twice = False
@@ -86,15 +106,18 @@ class Game:
 
     self._reset_hands(bet=bet)
 
-    self.player_one = self._deal_card()
+    self.player_first_card = self._deal_card()
     self.dealer_down = self._deal_card()
-    self.player_two = self._deal_card()
+    self.player_second_card = self._deal_card()
     self.dealer_up = self._deal_card()
 
-    self.player_hands[0].cards.append(self.player_one)  # Up
+    self.player_hands[0].cards.append(self.player_first_card)  # Up
     self.dealer_hand.cards.append(self.dealer_down)  # Down
-    self.player_hands[0].cards.append(self.player_two)  # Up
+    self.player_hands[0].cards.append(self.player_second_card)  # Up
     self.dealer_hand.cards.append(self.dealer_up)  # Up
+
+    if len(self.discard_pile) > len(self.shoe):
+      self.shoe_is_done = True
 
   def get_allowed_moves_for_hand(self) -> Set[Move]:
     if self.player_hands[0].has_blackjack():
@@ -141,7 +164,13 @@ class Game:
       toprint += 'Blackjack!\n'
 
       self.player_hands.pop(0)
-      self.outcome += 1 * self.blackjack_pays
+      if not self.is_doubled_down:
+        self.outcome += 1 * self.blackjack_pays
+      else:
+        self.outcome += 2
+        # TODO
+      if not self.move:
+        self.move = Move.BLACKJACK
       return toprint
     elif moves == {Move.BUST}:
       self.player_money -= self.bet
@@ -152,6 +181,8 @@ class Game:
 
       self.player_hands.pop(0)
       self.outcome += -1
+      if not self.move:
+        self.move = Move.BUST
       return toprint
 
     # Select move randomly if not provided
@@ -189,6 +220,7 @@ class Game:
 
       if move == Move.DOUBLE:
         self.bet *= 2
+        self.is_doubled_down = True
         toprint += 'Double!\n'
       toprint += 'Hit!\n'
 
@@ -259,3 +291,6 @@ class Hand:
 
 if __name__ == '__main__':
   print('Welcome to blackjack!')
+
+  runner = Runner()
+  runner.play_a_game(num_games=10 ** 8)
